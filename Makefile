@@ -20,4 +20,7 @@ slidify : index.html ## slidify from Rmarkdown source
 
 view : index.view ## view the slides in a (new) browser window
 
+publish :  ## publish?
+	r -l slidify -e 'publish(user="shabbychef", repo="startupmltalk", host="github")'
+
 

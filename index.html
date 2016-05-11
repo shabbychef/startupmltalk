@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Broken Backtests</title>
+  <meta charset="utf-8">
+  <meta name="description" content="Broken Backtests">
+  <meta name="author" content="Steven E. Pav">
+  <meta name="generator" content="slidify" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta http-equiv="X-UA-Compatible" content="chrome=1">
+  <link rel="stylesheet" href="/usr/local/lib/R/site-library/slidifyLibraries/libraries/frameworks/io2012/css/default.css" media="all" >
+  <link rel="stylesheet" href="/usr/local/lib/R/site-library/slidifyLibraries/libraries/frameworks/io2012/css/phone.css" 
+    media="only screen and (max-device-width: 480px)" >
+  <link rel="stylesheet" href="/usr/local/lib/R/site-library/slidifyLibraries/libraries/frameworks/io2012/css/slidify.css" >
+  <link rel="stylesheet" href="/usr/local/lib/R/site-library/slidifyLibraries/libraries/highlighters/highlight.js/css/tomorrow.css" />
+  <base target="_blank"> <!-- This amazingness opens all links in a new tab. -->  <link rel=stylesheet href="/usr/local/lib/R/site-library/slidifyLibraries/libraries/widgets/bootstrap/css/bootstrap.css"></link>
+<link rel=stylesheet href="./assets/css/ribbons.css"></link>
+
+  
+  <!-- Grab CDN jQuery, fall back to local if offline -->
+  <script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.7.min.js"></script>
+  <script>window.jQuery || document.write('<script src="/usr/local/lib/R/site-library/slidifyLibraries/libraries/widgets/quiz/js/jquery.js"><\/script>')</script> 
+  <script data-main="/usr/local/lib/R/site-library/slidifyLibraries/libraries/frameworks/io2012/js/slides" 
+    src="/usr/local/lib/R/site-library/slidifyLibraries/libraries/frameworks/io2012/js/require-1.0.8.min.js">
+  </script>
+  
+  
+
+</head>
+<body style="opacity: 0">
+  <slides class="layout-widescreen">
+    
+    <!-- LOGO SLIDE -->
+        <slide class="title-slide segue nobackground">
+  <hgroup class="auto-fadein">
+    <h1>Broken Backtests</h1>
+    <h2>... and what to do about them</h2>
+    <p>Steven E. Pav<br/>(former quant)</p>
+  </hgroup>
+  <article></article>  
+</slide>
+    
+
+    <!-- SLIDES -->
+    <slide class="" id="slide-1" style="background:;">
+  <article data-timings="">
+    <style type="text/css">
+/* http://stackoverflow.com/a/20876817/164611 */
+
+.title-slide {
+  background-color: #88BBDD; /* #EDE0CF; ; #CA9F9D*/
+  /* background-image:url(http://goo.gl/EpXln); */
+}
+
+.title-slide hgroup > h1{
+ font-family: 'Oswald', 'Helvetica', sanserif; 
+}
+
+.title-slide hgroup > h1, 
+.title-slide hgroup > h2 {
+  color: #FFFFF4 ;  /* ; #EF5150*/
+}
+.class {
+  background-color: #FFFFFF
+}
+/* color: #535E43 ;  */
+
+/* I tried .body .slide .article div q p and so on. nothing. */
+
+/* probably only for revealjs do you need this: */
+p { text-align: left; }
+</style>
+
+<!-- outline
+
+who am I 
+who uses backtests
+what is a backtest
+different kinds of backtests
+why the problem is hard
+different kinds of broken
+  - time travel
+  - single time series problems
+  - corporate actions
+  - 'bad' fill simulation
+
+-->
+
+<!-- notes for reveal: -->
+
+<!-- zoom transition also good, but a little distracting -->
+
+<!-- c.f.  
+http://zevross.com/blog/2014/11/19/creating-elegant-html-presentations-that-feature-r-code/
+http://stackoverflow.com/a/21468200/164611
+https://github.com/hakimel/reveal.js/
+https://j.eremy.net/align-lists-flush-left/
+-->
+
+<h2>Who am I?</h2>
+
+<ul>
+<li>Former applied mathematician. </li>
+<li>Quant Programmer &amp; Quant Strategist 2007-2015 at 
+two small ML-based hedge funds.</li>
+<li>Almost pure quant funds, ML-based, in U.S. (&quot;single name&quot;) equities and
+volatility futures.</li>
+<li>Tried many approaches to finding alpha:
+
+<ul>
+<li>ML based like SVM, random forests, GP.</li>
+<li>traditional techniques: plain old linear regression.</li>
+</ul></li>
+<li>Terrifying feeling of <em>&quot;what am I doing here?&quot;</em>
+
+<ul>
+<li>How do you write and validate and debug a backtest simulator?</li>
+<li>No open source code available at the time.</li>
+<li>Most academics probably write backtest code from scratch.</li>
+<li>Papers with implicit backtests are <em>a priori</em> suspect,
+moreso if the strategy is complex.</li>
+</ul></li>
+</ul>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="backtests" style="background:;">
+  <hgroup>
+    <h2>Why backtest?</h2>
+  </hgroup>
+  <article data-timings="">
+    <ul>
+<li>What makes a profitable strategy?
+
+<ul>
+<li>Need prediction of future price movements.</li>
+</ul></li>
+<li>But also:
+
+<ul>
+<li>Turn the predictions into trades.</li>
+<li>No, <em>really</em>. You need to <strong>turn the predictions into trades</strong>.</li>
+<li>Eliminate or reduce exposure to certain risks.</li>
+<li>Control trade costs. (market impact, commissions, short financing.)</li>
+</ul></li>
+<li>Hard to estimate the effects of the different moving parts separately.</li>
+<li>So simulate your trading historically: A <em>backtest.</em></li>
+<li>Backtesting basically implies <em>systematic</em> strategies.</li>
+<li>Backtest to decide how much (if any) to deploy in a strategy.</li>
+</ul>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="whatdo" style="background:;">
+  <hgroup>
+    <h2>What do backtests do?</h2>
+  </hgroup>
+  <article data-timings="">
+    <ul>
+<li>A backtest probably should:
+
+<ul>
+<li>simulate environment in which you act (presents point-in-time data, accepts orders).</li>
+<li>simulate the reactions of the world (fills, commissions, corporate actions,
+<em>etc</em>.).</li>
+<li>translate in an obvious way to a real trading strategy.</li>
+<li>provide a guarantee of <em>time safety</em>.</li>
+</ul></li>
+<li>Creating a good backtesting environment requires:
+
+<ul>
+<li>Software engineering: <em>balance</em> <strong>time safety</strong>, <strong>computational
+efficiency</strong> &amp; <strong>developer sanity</strong>.</li>
+<li>Domain knowledge and data: <em>How do corporate actions work?</em> <em>How should you simulate fill?</em></li>
+<li>Great statistical powers: <em>How do you interpret the results?</em> <em>How do you
+avoid overfitting?</em></li>
+<li>Good intuition and sleuthing abilities: <em>What new thing is broken?</em></li>
+</ul></li>
+</ul>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="kindsof" style="background:;">
+  <hgroup>
+    <h2>Different kinds of backtests</h2>
+  </hgroup>
+  <article data-timings="">
+    <p><center><img src="./figure/backtests.png" alt=""></center></p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="garbatrage" style="background:;">
+  <article data-timings="">
+    <style type="text/css">
+p { text-align: left; }
+</style>
+
+<h2>Garbatrage</h2>
+
+<ul>
+<li><p>Use Bayes&#39; Rule:</p>
+
+<ul>
+<li>Devising a consistently profitable trading strategy is known to be hard. <br>
+(The EMH posits that it is essentially <em>impossible</em>.)</li>
+<li>Bugs are easy to make. A good programmer will make several a day.</li>
+</ul></li>
+<li><p>If your backtest looks profitable, what is the likelihood the
+strategy is really profitable?
+\[\mathcal{O}\left(\left.A\right|B\right) \propto \mathcal{O}\left(A\right)
+\Lambda\left(\left.B\right|A\right).\]</p></li>
+<li><p>If you are exploring a new asset class, using a new fill simulator, 
+using new code, testing a new strategy, or reading a paper, 
+and the backtest looks great, <em>it&#39;s probably a bug</em>.</p></li>
+</ul>
+
+<p>Examples:</p>
+
+<ul>
+<li>Paper from March 2012 that claimed Sharpe of 3.5 / sqrt(yr) and 500% 
+annual returns using monthly trading with signal delayed a month. </li>
+<li>Three day old tweets give you a Sharpe of around 9 / sqrt(yr) trading on the
+DJIA index.</li>
+</ul>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="timetravelzero" style="background:;">
+  <hgroup>
+    <h2>Time Travel</h2>
+  </hgroup>
+  <article data-timings="">
+    <ul>
+<li>The most common error in backtests is <em>time travel</em>: use of future information 
+in simulations.</li>
+<li>Time travel is easy to simulate, but hard to implement!</li>
+<li>Time travel occurs for many reasons:
+
+<ul>
+<li>Using crude tools.</li>
+<li>Backfill and survivorship bias.</li>
+<li>Representation of corporate actions: dividends, splits, spinoffs, mergers,
+warrants.</li>
+<li>Think-os and code boo boos.</li>
+</ul></li>
+</ul>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="survivorship" style="background:;">
+  <hgroup>
+    <h2>Survivorship and Backfill</h2>
+  </hgroup>
+  <article data-timings="">
+    <ul>
+<li>Inclusion/exclusion of a company in data may be a form of time travel.</li>
+<li>A classic survivorship bias: trading historically on <em>today&#39;s</em> S&amp;P500 universe
+of stocks.</li>
+<li>Similarly, data vendors often backfill data for companies.
+
+<ul>
+<li>You can test for this, or just ask them!</li>
+</ul></li>
+<li>Vendors (or you) do weird things to deal with mergers. </li>
+<li>Takeaway: be careful with universe construction.</li>
+</ul>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="corporate" style="background:;">
+  <hgroup>
+    <h2>Corporate Actions</h2>
+  </hgroup>
+  <article data-timings="">
+    <ul>
+<li>Corporate actions are notoriously time-leaky.</li>
+<li>Representing asset returns as a single time series: in reality, they
+<a href="https://en.wikipedia.org/wiki/Citigroup">branch across time</a>.</li>
+<li>Corporate actions are just 
+<a href="http://www.denisonmines.com/s/Corporate_History.asp">hard to model</a>.</li>
+<li>For example, (back) adjusted closes. A portfolio inversely proportional to
+adjusted close has time-travel &#39;arb&#39;.</li>
+</ul>
+
+<p><img src="assets/fig/aapl-1.png" title="plot of chunk aapl" alt="plot of chunk aapl" width="900px" height="200px" /></p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="mlhackerone" style="background:;">
+  <hgroup>
+    <h2>The ML Hacker Trap</h2>
+  </hgroup>
+  <article data-timings="">
+    <ul>
+<li>Align returns to features for training ML models.</li>
+<li>Forget that the model is timestamped to the <em>returns</em>.</li>
+<li>A warning: <em>the more often I retrain, the better
+my model!</em> <br>
+(Often with an excuse for &#39;time freshness&#39;.)</li>
+</ul>
+
+<p><center><img src="./figure/align1.png" alt=""></center></p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="mlhackertwo" style="background:;">
+  <hgroup>
+    <h2>The ML Hacker Trap</h2>
+  </hgroup>
+  <article data-timings="">
+    <ul>
+<li>Align returns to features for training ML models.</li>
+<li>Forget that the model is timestamped to the <em>returns</em>.</li>
+<li>A warning: <em>the more often I retrain, the better
+my model!</em> <br>
+(Often with an excuse for &#39;time freshness&#39;.)</li>
+</ul>
+
+<p><center><img src="./figure/align2.png" alt=""></center></p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="fill" style="background:;">
+  <hgroup>
+    <h2>Broken Fill Simulation</h2>
+  </hgroup>
+  <article data-timings="">
+    <ul>
+<li>In reality, orders might not get (fully) filled, or might get a bad price.</li>
+<li>Hard to simulate given coarse data, like daily bars.</li>
+<li>There is &#39;market impact&#39; where your order affects your fill price.
+
+<ul>
+<li>Bigger orders lead to bigger impact.</li>
+<li>Decent theoretical models but with uncertain parameters.</li>
+<li>Fitting the parameters is tricky--you only observe one history.</li>
+<li>Impact models often ignore other factors (like the Market).</li>
+</ul></li>
+<li><p>Fill simulation should introduce a <em>large</em> band of uncertainty
+around your simulations.</p></li>
+<li><p>You do not </p></li>
+</ul>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="ohno" style="background:;">
+  <hgroup>
+    <h2>Overfitting?</h2>
+  </hgroup>
+  <article data-timings="">
+    <p><center><img src="./figure/Curve_fitting.jpg" alt=""></center></p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="overfitting" style="background:;">
+  <hgroup>
+    <h2>Overfitting</h2>
+  </hgroup>
+  <article data-timings="">
+    <ul>
+<li>Two forms of overfitting:
+
+<ul>
+<li>Having an overly optimistic estimate of out-of-sample performance.</li>
+<li>Choosing a suboptimal strategy by having too much freedom.</li>
+</ul></li>
+<li>Two forms or one form?</li>
+</ul>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="eafters" style="background:;">
+  <hgroup>
+    <h2>Biased Estimates</h2>
+  </hgroup>
+  <article data-timings="">
+    <ul>
+<li>First kind of overfitting is like &#39;estimation after selection&#39;.</li>
+<li>For example:
+
+<ul>
+<li>generate 1000 &#39;random&#39; strategies,</li>
+<li>backtest them all,</li>
+<li>pick best one based on maximal in-sample Sharpe,</li>
+<li>estimate the out-of-sample Sharpe of that strategy?</li>
+</ul></li>
+<li>But not entirely a technical problem.</li>
+<li>Usually attacked by elaborate &#39;<em>in-sample</em>&#39; vs. &#39;<em>out-of-sample</em>&#39; schemes.</li>
+<li>In reality, there is &#39;<em>in-sample</em>&#39; and &#39;<em>trading-real-money</em>.&#39;
+
+<ul>
+<li>You ignore data available to you now at your own risk.</li>
+</ul></li>
+</ul>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="suboptimal" style="background:;">
+  <hgroup>
+    <h2>Suboptimal Models</h2>
+  </hgroup>
+  <article data-timings="">
+    <ul>
+<li><p>The classical overfit problem: too many parameters causes 
+poor live performance.
+<img src="assets/fig/overfit-1.png" title="plot of chunk overfit" alt="plot of chunk overfit" width="900px" height="200px" /></p></li>
+<li><p>Applies to portfolio optimization in a subtle way.</p></li>
+<li><p>&quot;<em>A perfectly rational agent should not be harmed by addition of choices.</em>&quot;</p></li>
+<li><p><strong>There are no perfectly rational systematic strategies.</strong></p></li>
+</ul>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="conclusions" style="background:;">
+  <hgroup>
+    <h2>Parting Words</h2>
+  </hgroup>
+  <article data-timings="">
+    <ul>
+<li>Sorry, but you probably have to write your own backtester.</li>
+<li>Backtests are often broken.</li>
+<li>You should be suspect of all results based on backtests,
+including your own.</li>
+<li>The best way to find errors in your backtester is to use
+it a lot.</li>
+<li>Making systematic strategies is <em>not</em> just a software
+engineering challenge.</li>
+<li>Good luck!</li>
+</ul>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+    <slide class="backdrop"></slide>
+  </slides>
+  <div class="pagination pagination-small" id='io2012-ptoc' style="display:none;">
+    <ul>
+      <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=1 title='NA'>
+         1
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=2 title='Why backtest?'>
+         2
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=3 title='What do backtests do?'>
+         3
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=4 title='Different kinds of backtests'>
+         4
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=5 title='NA'>
+         5
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=6 title='Time Travel'>
+         6
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=7 title='Survivorship and Backfill'>
+         7
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=8 title='Corporate Actions'>
+         8
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=9 title='The ML Hacker Trap'>
+         9
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=10 title='The ML Hacker Trap'>
+         10
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=11 title='Broken Fill Simulation'>
+         11
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=12 title='Overfitting?'>
+         12
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=13 title='Overfitting'>
+         13
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=14 title='Biased Estimates'>
+         14
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=15 title='Suboptimal Models'>
+         15
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=16 title='Parting Words'>
+         16
+      </a>
+    </li>
+  </ul>
+  </div>  <!--[if IE]>
+    <script 
+      src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js">  
+    </script>
+    <script>CFInstall.check({mode: 'overlay'});</script>
+  <![endif]-->
+</body>
+  <!-- Load Javascripts for Widgets -->
+  <script src="/usr/local/lib/R/site-library/slidifyLibraries/libraries/widgets/bootstrap/js/bootstrap.min.js"></script>
+<script src="/usr/local/lib/R/site-library/slidifyLibraries/libraries/widgets/bootstrap/js/bootbox.min.js"></script>
+
+  <!-- MathJax: Fall back to local if CDN offline but local image fonts are not supported (saves >100MB) -->
+  <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      tex2jax: {
+        inlineMath: [['$','$'], ['\\(','\\)']],
+        processEscapes: true
+      }
+    });
+  </script>
+  <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/2.0-latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  <!-- <script src="https://c328740.ssl.cf1.rackcdn.com/mathjax/2.0-latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+  </script> -->
+  <script>window.MathJax || document.write('<script type="text/x-mathjax-config">MathJax.Hub.Config({"HTML-CSS":{imageFont:null}});<\/script><script src="/usr/local/lib/R/site-library/slidifyLibraries/libraries/widgets/mathjax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"><\/script>')
+</script>
+<script>  
+  $(function (){ 
+    $("#example").popover(); 
+    $("[rel='tooltip']").tooltip(); 
+  });  
+  </script>  
+  <!-- LOAD HIGHLIGHTER JS FILES -->
+  <script src="/usr/local/lib/R/site-library/slidifyLibraries/libraries/highlighters/highlight.js/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  <!-- DONE LOADING HIGHLIGHTER JS FILES -->
+   
+  </html>
