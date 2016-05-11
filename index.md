@@ -236,11 +236,6 @@ my model!_ <br>
 * Fill simulation should introduce a _large_ band of uncertainty
 around your simulations.
 
-
-
-* You do not 
-
-
 --- .class #ohno
 
 ## Overfitting?
