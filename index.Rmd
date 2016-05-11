@@ -7,7 +7,7 @@ framework   : io2012      # {io2012, html5slides, shower, revealjs, dzslides, ..
 highlighter : highlight.js  # {highlight.js, prettify, highlight}
 hitheme     : tomorrow      # 
 widgets     : [mathjax, bootstrap]            # {mathjax, quiz, bootstrap}
-mode        : draft # {selfcontained, standalone, draft}
+mode        : selfcontained # {selfcontained, standalone, draft}
 knit        : slidify::knit2slides
 io2012      : 
   bg          : #FF5555
